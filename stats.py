@@ -1,39 +1,52 @@
 import os
+import sys
 import matplotlib.pyplot as plt
 import re
 import numpy as np
-import subprocess
+from subprocess import check_output, Popen
 from wifi import *
 
-sh = subprocess.check_output('sudo iwlist wlp2s0 scan | grep -e \'SSID\' -e \'Frequency\' -e \'Quality\'', shell=True)
+def channel_sort(self):
+	return self.signal;
 
-file = sh.decode("utf-8")
-wifi_list = []
+def main():
+	sh = check_output('nmcli dev wifi', shell=True)
+	file = sh.decode("utf-8")
 
-#find values
-patt_signal = re.findall('level=-[0-9][0-9]', file)
-patt_names = re.findall('ESSID:\".*\"', file)
-patt_qual = re.findall('[\d][\d]/[\d][\d]', file)
-patt_chan = re.findall(' [0-9]+\)', file)
+	with open('nmcli_log.txt', 'w') as handle:
+		handle.write(file)
 
-#polish
-channels = [int(a[1:-1]) for a in patt_chan]
-names = [x[7:10] for x in patt_names if x[7]!='"']
-signal = [int(x[-3:]) for x in patt_signal]
-quality = [int(patt[:2])/int(patt[3:]) for patt in patt_qual]
+	#find values
+	patt_chan = re.findall('Infra\s+[0-9]+', file)
+	patt_names = re.findall(':[A-Z0-9][A-Z0-9]\s+[A-Za-z0-9\._-]+', file)
+	patt_signal = re.findall('bit/s.+[0-9][0-9][0-9]*', file)
+	patt_qual = re.findall('[\d][\d][\d]*\sMb', file)
+	wifi_list = [sys.getsizeof(Wifi)] * len(patt_signal);
 
-for i in range(len(names)):
-	if channels[i]<30:
-		tmp = Wifi(signal[i], names[i], quality[i], channels[i])
-		wifi_list.append(tmp)
+	#polish
+	channels = [a[-2:] for a in patt_chan]
+	names = [x[5:8] for x in patt_names]
+	signal = [(x[-2:]) for x in patt_signal]
+	rate = [patt[0:3] for patt in patt_qual]
 
-plt.scatter([i.strength for i in wifi_list], [i.channel for i in wifi_list], c=[i.quality for i in wifi_list], cmap='RdBu')
-clb = plt.colorbar()
-clb.set_label('quality', rotation=270)
-for wifi in wifi_list:
-	plt.annotate(wifi.name, (wifi.strength, wifi.channel), (3,3), textcoords='offset pixels')
-	wifi.print_wifi()
 
-plt.xlabel('sig_strength [dB]')
-plt.ylabel('channel')
-plt.show()
+	for i in range(len(patt_chan)):
+		if int(channels[i])<50:
+			wifi_list[len(patt_chan)-i-1] = Wifi(signal[i], names[i], rate[i], channels[i])
+
+	# sort them by channel
+	wifi_list.sort(key=channel_sort)
+
+	plt.scatter([i.channel for i in wifi_list], [i.signal for i in wifi_list], c=[i.rate for i in wifi_list], cmap='RdBu')
+	clb = plt.colorbar()
+	clb.set_label('rate [Mb/s]', rotation=270)
+	for wifi in wifi_list:
+		plt.annotate(wifi.name, (wifi.channel, wifi.signal), (3,3), textcoords='offset pixels')
+
+	# plt.legend(list([bw for bw in rate]), list([bw for bw in rate]))
+	plt.ylabel('sig_strength [dB]')
+	plt.xlabel('channel')
+	plt.show()
+
+if __name__ == '__main__':
+	main()
