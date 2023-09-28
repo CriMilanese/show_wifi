@@ -5,11 +5,12 @@ import re
 import numpy as np
 from subprocess import check_output, Popen
 from wifi import *
+import mplcursors as mc
 
 def channel_sort(self):
 	return self.signal;
 
-def main():
+def harvest_wifi_data():
 	sh = check_output('nmcli dev wifi', shell=True)
 	file = sh.decode("utf-8")
 
@@ -36,17 +37,19 @@ def main():
 
 	# sort them by channel
 	wifi_list.sort(key=channel_sort)
-
+	fig = plt.gcf()
 	plt.scatter([i.channel for i in wifi_list], [i.signal for i in wifi_list], c=[i.rate for i in wifi_list], cmap='RdBu')
+
+	plt.get_current_fig_manager().set_window_title('WiFi signals around you')
 	clb = plt.colorbar()
 	clb.set_label('rate [Mb/s]', rotation=270)
 	for wifi in wifi_list:
 		plt.annotate(wifi.name, (wifi.channel, wifi.signal), (3,3), textcoords='offset pixels')
 
-	# plt.legend(list([bw for bw in rate]), list([bw for bw in rate]))
+  # give extra info on hover
+	mc.cursor(hover=True)
 	plt.ylabel('sig_strength [dB]')
 	plt.xlabel('channel')
 	plt.show()
 
-if __name__ == '__main__':
-	main()
+harvest_wifi_data()
