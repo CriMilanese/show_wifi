@@ -9,3 +9,9 @@ A tool written for **python3** with the help and therefore the dependency of `nu
 
 ### HOW 
 just run `python3 stats.py`
+
+### update Oct23
+Some error occurs that were not there at last testing, plot throws an error for incomparable values.
+
+Solved - the script was messed, it seems I was attempting to update the values in real-time
+to get a better approximation because at the time of reading, a single value could be an outlier in the spectrum of signal's amplitudes that could have reached my antenna.
